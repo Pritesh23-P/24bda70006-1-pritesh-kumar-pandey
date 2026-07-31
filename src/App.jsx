@@ -394,9 +394,9 @@ export default function App() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         
         {/* Header Bar */}
-        <header className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8 bg-white/80 backdrop-blur-md p-4 sm:p-6 rounded-3xl border border-slate-200 shadow-sm">
+        <header className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8 bg-white/80 backdrop-blur-md p-4 sm:p-6 rounded-3xl border border-slate-200 shadow-none">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-slate-900 flex items-center justify-center border border-slate-800 shadow-xs">
+            <div className="w-11 h-11 rounded-2xl bg-slate-900 flex items-center justify-center border border-slate-800 shadow-none">
               <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polygon points="12 2 2 7 12 12 22 7 12 2" />
                 <polyline points="2 17 12 22 22 17" />
@@ -418,7 +418,7 @@ export default function App() {
                 </span>
                 <button
                   onClick={handleLogout}
-                  className="px-3.5 py-1.5 rounded-full bg-white text-xs font-medium text-slate-700 hover:bg-slate-200 transition shadow-sm"
+                  className="px-3.5 py-1.5 rounded-full bg-white text-xs font-medium text-slate-700 hover:bg-slate-200 transition shadow-none"
                 >
                   Sign Out
                 </button>
@@ -426,7 +426,7 @@ export default function App() {
             ) : (
               <button
                 onClick={() => { setAuthMode('login'); setAuthModalOpen(true); }}
-                className="px-5 py-2.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-md shadow-slate-900/10 transition active:scale-95"
+                className="px-5 py-2.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-none transition active:scale-95"
               >
                 Sign In / Register
               </button>
@@ -441,7 +441,7 @@ export default function App() {
           <div className="lg:col-span-7 space-y-6">
             
             {/* Target Platforms Bar */}
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-none space-y-3">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Select Target Platforms</label>
                 <span className="text-xs font-medium text-slate-500">{selectedPlatforms.length} Selected</span>
@@ -455,7 +455,7 @@ export default function App() {
                       onClick={() => togglePlatform(platform.id)}
                       className={`flex items-center justify-between p-3 rounded-2xl border transition-all text-left ${
                         isSelected
-                          ? `bg-slate-900 text-white border-slate-900 shadow-sm`
+                          ? `bg-slate-900 text-white border-slate-900 shadow-none`
                           : `bg-slate-50 text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-100/70`
                       }`}
                     >
@@ -477,7 +477,7 @@ export default function App() {
             </div>
 
             {/* Post Content Composer Box */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-none space-y-4">
               
               <div className="flex items-center justify-between">
                 <input
@@ -505,7 +505,7 @@ export default function App() {
                   value={postContent}
                   onChange={e => setPostContent(e.target.value)}
                   placeholder="Write your post content here... Use #hashtags and emojis!"
-                  className="w-full text-sm text-slate-800 placeholder-slate-400 bg-slate-50 p-4 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 transition resize-y font-normal"
+                  className="w-full text-sm text-slate-800 placeholder-slate-400 bg-slate-50 p-4 rounded-2xl border border-slate-200 focus:outline-none focus:border-slate-400 transition resize-y font-normal"
                 ></textarea>
               </div>
 
@@ -624,7 +624,7 @@ export default function App() {
                     disabled={!isPostValid}
                     className={`px-6 py-2.5 rounded-2xl text-xs font-bold transition ${
                       isPostValid
-                        ? 'bg-slate-900 hover:bg-slate-800 text-white shadow-md shadow-slate-900/10'
+                        ? 'bg-slate-900 hover:bg-slate-800 text-white shadow-none'
                         : 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none border border-slate-200/60'
                     }`}
                   >
@@ -635,7 +635,7 @@ export default function App() {
             </div>
 
             {/* Real-Time Compliance Ring Panel */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-none space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Real-Time Validation & Rings</h3>
                 <span className="text-xs text-slate-500 font-medium">Compliance Check</span>
@@ -734,7 +734,7 @@ export default function App() {
           <div className="lg:col-span-5 space-y-6">
             
             {/* Live Platform Feed Mockup Card */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Live Mockup Preview</h3>
                 <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
@@ -744,7 +744,7 @@ export default function App() {
                       onClick={() => setActivePreviewTab(pKey)}
                       className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition flex items-center gap-1.5 ${
                         activePreviewTab === pKey
-                          ? 'bg-white text-slate-900 shadow-xs'
+                          ? 'bg-white text-slate-900 border border-slate-200/60'
                           : 'text-slate-500 hover:text-slate-800'
                       }`}
                     >
@@ -845,7 +845,7 @@ export default function App() {
             </div>
 
             {/* Account-Scoped Draft Studio & Published History */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-none space-y-4">
               
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Account Studio</h3>
@@ -855,7 +855,7 @@ export default function App() {
                       onClick={() => setActiveStudioTab('drafts')}
                       className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
                         activeStudioTab === 'drafts'
-                          ? 'bg-white text-slate-900 shadow-xs'
+                          ? 'bg-white text-slate-900 border border-slate-200/60'
                           : 'text-slate-500 hover:text-slate-800'
                       }`}
                     >
@@ -865,7 +865,7 @@ export default function App() {
                       onClick={() => setActiveStudioTab('published')}
                       className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
                         activeStudioTab === 'published'
-                          ? 'bg-white text-slate-900 shadow-xs'
+                          ? 'bg-white text-slate-900 border border-slate-200/60'
                           : 'text-slate-500 hover:text-slate-800'
                       }`}
                     >
@@ -878,7 +878,7 @@ export default function App() {
               {/* LOGGED OUT STATE: Lock Screen */}
               {!currentUser ? (
                 <div className="py-10 px-4 text-center rounded-2xl bg-slate-50 border border-dashed border-slate-300 space-y-4">
-                  <div className="w-12 h-12 rounded-2xl bg-slate-200 text-slate-600 flex items-center justify-center mx-auto text-xl shadow-inner">
+                  <div className="w-12 h-12 rounded-2xl bg-slate-200 text-slate-600 flex items-center justify-center mx-auto text-xl border border-slate-300">
                     🔒
                   </div>
                   <div className="space-y-1">
@@ -889,7 +889,7 @@ export default function App() {
                   </div>
                   <button
                     onClick={() => { setAuthMode('login'); setAuthModalOpen(true); }}
-                    className="px-5 py-2.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition shadow"
+                    className="px-5 py-2.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition shadow-none"
                   >
                     Sign In Now
                   </button>
@@ -990,7 +990,7 @@ export default function App() {
       {/* Sign In & Account Modal */}
       {authModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-md bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-2xl space-y-6">
+          <div className="w-full max-w-md bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-none space-y-6">
             
             <div className="flex items-center justify-between">
               <div>
@@ -1023,7 +1023,7 @@ export default function App() {
                     value={authName}
                     onChange={e => setAuthName(e.target.value)}
                     placeholder="Alex Morgan"
-                    className="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                    className="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:border-slate-400 transition"
                   />
                 </div>
               )}
@@ -1036,7 +1036,7 @@ export default function App() {
                   value={authEmail}
                   onChange={e => setAuthEmail(e.target.value)}
                   placeholder="alex@postforge.com"
-                  className="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                  className="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:border-slate-400 transition"
                 />
               </div>
 
@@ -1048,14 +1048,14 @@ export default function App() {
                   value={authPassword}
                   onChange={e => setAuthPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                  className="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:border-slate-400 transition"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={authLoading}
-                className="w-full py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-md shadow-slate-900/10 transition"
+                className="w-full py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-none transition"
               >
                 {authLoading ? 'Authenticating...' : (authMode === 'login' ? 'Sign In' : 'Create Account')}
               </button>
