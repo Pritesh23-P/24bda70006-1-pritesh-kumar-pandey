@@ -291,6 +291,11 @@ export default function App() {
       updatedAt: new Date().toISOString()
     };
 
+    // Optimistically update state, save to local storage, and switch to Published tab
+    const updatedList = storage.saveDraft(publishedRecord);
+    setDrafts(updatedList);
+    setActiveStudioTab('published');
+
     try {
       await fetch('/api/drafts', {
         method: 'POST',
@@ -299,8 +304,7 @@ export default function App() {
       });
       fetchUserDrafts(currentUser.email);
     } catch (e) {
-      const updated = storage.saveDraft(publishedRecord);
-      setDrafts(updated);
+      console.error("Publish post network error:", e);
     }
 
     if (!draftIdToPublish) {

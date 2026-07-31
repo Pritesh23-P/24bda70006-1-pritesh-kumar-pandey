@@ -486,6 +486,9 @@
 
         const record = { ...toPub, status: 'published', publishedAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
 
+        setDrafts(storage.saveDraft(record));
+        setActiveStudioTab('published');
+
         try {
           await fetch('/api/drafts', {
             method: 'POST',
@@ -493,9 +496,7 @@
             body: JSON.stringify(record)
           });
           fetchUserDrafts(currentUser.email);
-        } catch(e) {
-          setDrafts(storage.saveDraft(record));
-        }
+        } catch(e) {}
 
         if (!draftIdToPublish) {
           setPostContent('');
