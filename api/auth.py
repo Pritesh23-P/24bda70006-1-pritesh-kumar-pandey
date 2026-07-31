@@ -19,10 +19,11 @@ def get_collection():
     try:
         from pymongo import MongoClient
         client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=4000, connectTimeoutMS=4000)
-        return client[DB_NAME][COLLECTION_NAME]
+        # Ping MongoDB Atlas to verify connection
+        client.admin.command('ping')
+        return client[DB_NAME][COLLECTION_NAME], None
     except Exception as e:
-        print("Vercel PyMongo warning:", e)
-        return None
+        return None, str(e)
 
 def format_name(name_str):
     if not name_str:
@@ -64,8 +65,13 @@ class handler(BaseHTTPRequestHandler):
                 return
 
         if 'health' in parsed.path:
-            col = get_collection()
-            self.send_json(200, {"status": "ok", "service": "PostForge Vercel Engine", "mongoConnected": col is not None})
+            col, err = get_collection()
+            self.send_json(200, {
+                "status": "ok",
+                "service": "PostForge Vercel Engine",
+                "mongoConnected": col is not None,
+                "mongoError": err
+            })
             return
 
         if 'draft' in parsed.path:
@@ -73,7 +79,7 @@ class handler(BaseHTTPRequestHandler):
             email = params.get('email', [''])[0]
 
             drafts_list = []
-            col = get_collection()
+            col, _ = get_collection()
             if col is not None and email:
                 try:
                     cursor = col.find({"type": "draft", "userEmail": email})
@@ -108,26 +114,26 @@ class handler(BaseHTTPRequestHandler):
                 self.send_json(400, {"success": False, "message": "Email is required"})
                 return
 
-            col = get_collection()
+            col, db_err = get_collection()
             if col is not None and password:
                 try:
                     user = col.find_one({"type": "user", "email": email, "password": password})
                     if user:
                         name = format_name(user.get('name') or email.split('@')[0])
-                        self.send_json(200, {"success": True, "user": {"email": email, "name": name}})
+                        self.send_json(200, {"success": True, "user": {"email": email, "name": name}, "db": "mongodb_atlas"})
                         return
                     else:
                         # Auto register user for frictionless auth
                         name = format_name(email.split('@')[0])
                         col.insert_one({"type": "user", "email": email, "password": password, "name": name})
-                        self.send_json(200, {"success": True, "user": {"email": email, "name": name}})
+                        self.send_json(200, {"success": True, "user": {"email": email, "name": name}, "db": "mongodb_atlas"})
                         return
                 except Exception as e:
                     print("Login DB error:", e)
 
             # Fallback auth return
             name = format_name(email.split('@')[0])
-            self.send_json(200, {"success": True, "user": {"email": email, "name": name}})
+            self.send_json(200, {"success": True, "user": {"email": email, "name": name}, "db": "fallback_local", "dbError": db_err})
             return
 
         if 'register' in parsed.path:
@@ -140,26 +146,26 @@ class handler(BaseHTTPRequestHandler):
                 self.send_json(400, {"success": False, "message": "Email is required"})
                 return
 
-            col = get_collection()
+            col, db_err = get_collection()
             if col is not None:
                 try:
                     existing = col.find_one({"type": "user", "email": email})
                     if existing:
-                        self.send_json(200, {"success": True, "user": {"email": email, "name": format_name(existing.get('name') or name)}})
+                        self.send_json(200, {"success": True, "user": {"email": email, "name": format_name(existing.get('name') or name)}, "db": "mongodb_atlas"})
                         return
                     col.insert_one({"type": "user", "email": email, "password": password, "name": name})
-                    self.send_json(200, {"success": True, "user": {"email": email, "name": name}})
+                    self.send_json(200, {"success": True, "user": {"email": email, "name": name}, "db": "mongodb_atlas"})
                     return
                 except Exception as e:
                     print("Register DB error:", e)
 
-            self.send_json(200, {"success": True, "user": {"email": email, "name": name}})
+            self.send_json(200, {"success": True, "user": {"email": email, "name": name}, "db": "fallback_local", "dbError": db_err})
             return
 
         if 'draft' in parsed.path:
             draft_id = body.get('id')
             user_email = body.get('userEmail')
-            col = get_collection()
+            col, db_err = get_collection()
             if col is not None and draft_id and user_email:
                 try:
                     body['type'] = 'draft'
@@ -168,10 +174,12 @@ class handler(BaseHTTPRequestHandler):
                         {"$set": body},
                         upsert=True
                     )
+                    self.send_json(200, {"success": True, "db": "mongodb_atlas"})
+                    return
                 except Exception as e:
                     print("Draft POST error:", e)
 
-            self.send_json(200, {"success": True})
+            self.send_json(200, {"success": True, "db": "fallback_local", "dbError": db_err})
             return
 
         self.send_json(404, {"error": "Not Found"})
@@ -183,7 +191,7 @@ class handler(BaseHTTPRequestHandler):
             draft_id = params.get('id', [''])[0]
             email = params.get('email', [''])[0]
 
-            col = get_collection()
+            col, _ = get_collection()
             if col is not None and draft_id:
                 try:
                     from bson.objectid import ObjectId
