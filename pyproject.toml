@@ -1,17 +1,12 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "postforge"
 version = "1.0.0"
 description = "Multi-Platform Social Media Post Composer & Draft Studio"
-readme = "README.md"
-requires-python = ">=3.9"
 dependencies = [
     "pymongo[srv]>=4.6.0",
     "dnspython>=2.4.0"
 ]
-
-[project.entry-points."vercel.handler"]
-entrypoint = "api.auth:handler"

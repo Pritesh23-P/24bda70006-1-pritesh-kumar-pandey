@@ -1,8 +1,9 @@
 """
-Vercel Serverless Function Handler for PostForge Authentication and Draft Operations
-Entrypoint: api.auth:handler
+Vercel Serverless Function Handler for PostForge API
+Official Vercel Python Runtime specification (BaseHTTPRequestHandler)
 """
 
+from http.server import BaseHTTPRequestHandler
 import json
 import os
 import urllib.parse
@@ -14,111 +15,42 @@ MONGO_URI = os.getenv(
 DB_NAME = "FS"
 COLLECTION_NAME = "FS1"
 
-# Initialize pymongo connection if available
-db = None
 collection = None
-
 try:
     from pymongo import MongoClient
     client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=3000)
     db = client[DB_NAME]
     collection = db[COLLECTION_NAME]
 except Exception as e:
-    print("Vercel PyMongo init error:", e)
+    print("Vercel PyMongo init warning:", e)
 
-def handler(request):
-    """
-    Standard WSGI/Vercel serverless request handler
-    """
-    method = getattr(request, 'method', 'GET')
-    path = getattr(request, 'path', '/api/auth')
-    
-    headers = {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type'
-    }
+class handler(BaseHTTPRequestHandler):
 
-    if method == 'OPTIONS':
-        return {
-            'statusCode': 200,
-            'headers': headers,
-            'body': json.dumps({'status': 'ok'})
-        }
+    def send_json(self, status, payload):
+        self.send_response(status)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.end_headers()
+        self.wfile.write(json.dumps(payload).encode('utf-8'))
 
-    try:
-        body = {}
-        if hasattr(request, 'get_data'):
-            raw_body = request.get_data(as_text=True)
-            if raw_body:
-                body = json.loads(raw_body)
-        elif hasattr(request, 'body') and request.body:
-            body = json.loads(request.body)
-    except Exception:
-        body = {}
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.end_headers()
 
-    # Login
-    if '/login' in path and method == 'POST':
-        email = body.get('email')
-        password = body.get('password')
+    def do_GET(self):
+        parsed = urllib.parse.urlparse(self.path)
         
-        if collection is not None:
-            try:
-                user = collection.find_one({"type": "user", "email": email, "password": password})
-                if user:
-                    return {
-                        'statusCode': 200,
-                        'headers': headers,
-                        'body': json.dumps({'success': True, 'user': {'email': email, 'name': user.get('name', email.split('@')[0])}})
-                    }
-            except Exception as e:
-                print("Login error:", e)
-        
-        # Fallback return
-        return {
-            'statusCode': 200,
-            'headers': headers,
-            'body': json.dumps({'success': True, 'user': {'email': email, 'name': email.split('@')[0] if email else 'User'}})
-        }
+        if parsed.path == '/api/health':
+            self.send_json(200, {"status": "ok", "service": "PostForge Vercel Engine", "mongoConnected": collection is not None})
+            return
 
-    # Register
-    if '/register' in path and method == 'POST':
-        email = body.get('email')
-        password = body.get('password')
-        name = body.get('name', email.split('@')[0] if email else 'User')
-
-        if collection is not None:
-            try:
-                existing = collection.find_one({"type": "user", "email": email})
-                if existing:
-                    return {
-                        'statusCode': 400,
-                        'headers': headers,
-                        'body': json.dumps({'success': False, 'message': 'User already exists'})
-                    }
-                collection.insert_one({"type": "user", "email": email, "password": password, "name": name})
-                return {
-                    'statusCode': 200,
-                    'headers': headers,
-                    'body': json.dumps({'success': True, 'user': {'email': email, 'name': name}})
-                }
-            except Exception as e:
-                print("Register error:", e)
-
-        return {
-            'statusCode': 200,
-            'headers': headers,
-            'body': json.dumps({'success': True, 'user': {'email': email, 'name': name}})
-        }
-
-    # Drafts GET & POST
-    if '/drafts' in path:
-        if method == 'GET':
-            query_string = getattr(request, 'query_string', '')
-            if hasattr(query_string, 'decode'):
-                query_string = query_string.decode('utf-8')
-            params = urllib.parse.parse_qs(query_string)
+        if '/api/drafts' in parsed.path:
+            params = urllib.parse.parse_qs(parsed.query)
             email = params.get('email', [''])[0]
 
             drafts_list = []
@@ -132,13 +64,63 @@ def handler(request):
                 except Exception as e:
                     print("Drafts GET error:", e)
 
-            return {
-                'statusCode': 200,
-                'headers': headers,
-                'body': json.dumps({'drafts': drafts_list})
-            }
+            self.send_json(200, {"drafts": drafts_list})
+            return
 
-        if method == 'POST':
+        self.send_json(404, {"error": "Not Found"})
+
+    def do_POST(self):
+        parsed = urllib.parse.urlparse(self.path)
+        content_length = int(self.headers.get('Content-Length', 0))
+        body_bytes = self.rfile.read(content_length) if content_length > 0 else b'{}'
+        
+        try:
+            body = json.loads(body_bytes.decode('utf-8'))
+        except Exception:
+            body = {}
+
+        if '/api/auth/login' in parsed.path:
+            email = body.get('email')
+            password = body.get('password')
+            
+            if collection is not None and email and password:
+                try:
+                    user = collection.find_one({"type": "user", "email": email, "password": password})
+                    if user:
+                        name = user.get('name') or email.split('@')[0]
+                        name = ' '.join(w.capitalize() for w in name.replace('.', ' ').replace('_', ' ').split())
+                        self.send_json(200, {"success": True, "user": {"email": email, "name": name}})
+                        return
+                except Exception as e:
+                    print("Login DB error:", e)
+
+            # Fallback return
+            formatted_name = ' '.join(w.capitalize() for w in (email.split('@')[0] if email else 'User').split())
+            self.send_json(200, {"success": True, "user": {"email": email, "name": formatted_name}})
+            return
+
+        if '/api/auth/register' in parsed.path:
+            email = body.get('email')
+            password = body.get('password')
+            name = body.get('name', email.split('@')[0] if email else 'User')
+            name = ' '.join(w.capitalize() for w in name.replace('.', ' ').replace('_', ' ').split())
+
+            if collection is not None and email:
+                try:
+                    existing = collection.find_one({"type": "user", "email": email})
+                    if existing:
+                        self.send_json(400, {"success": False, "message": "User already exists"})
+                        return
+                    collection.insert_one({"type": "user", "email": email, "password": password, "name": name})
+                    self.send_json(200, {"success": True, "user": {"email": email, "name": name}})
+                    return
+                except Exception as e:
+                    print("Register DB error:", e)
+
+            self.send_json(200, {"success": True, "user": {"email": email, "name": name}})
+            return
+
+        if '/api/drafts' in parsed.path:
             draft_id = body.get('id')
             user_email = body.get('userEmail')
             if collection is not None and draft_id and user_email:
@@ -152,11 +134,15 @@ def handler(request):
                 except Exception as e:
                     print("Draft POST error:", e)
 
-        if method == 'DELETE':
-            query_string = getattr(request, 'query_string', '')
-            if hasattr(query_string, 'decode'):
-                query_string = query_string.decode('utf-8')
-            params = urllib.parse.parse_qs(query_string)
+            self.send_json(200, {"success": True})
+            return
+
+        self.send_json(404, {"error": "Not Found"})
+
+    def do_DELETE(self):
+        parsed = urllib.parse.urlparse(self.path)
+        if '/api/drafts' in parsed.path:
+            params = urllib.parse.parse_qs(parsed.query)
             draft_id = params.get('id', [''])[0]
             email = params.get('email', [''])[0]
 
@@ -175,14 +161,7 @@ def handler(request):
                 except Exception as e:
                     print("Draft DELETE error:", e)
 
-            return {
-                'statusCode': 200,
-                'headers': headers,
-                'body': json.dumps({'success': True})
-            }
+            self.send_json(200, {"success": True})
+            return
 
-    return {
-        'statusCode': 200,
-        'headers': headers,
-        'body': json.dumps({'status': 'PostForge Serverless Function Active'})
-    }
+        self.send_json(404, {"error": "Not Found"})
