@@ -45,6 +45,17 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         
+        # Serve index.html for root or static paths
+        if parsed.path == '/' or not parsed.path.startswith('/api/'):
+            index_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'index.html')
+            if os.path.exists(index_path):
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/html; charset=utf-8')
+                self.end_headers()
+                with open(index_path, 'rb') as f:
+                    self.wfile.write(f.read())
+                return
+
         if parsed.path == '/api/health':
             self.send_json(200, {"status": "ok", "service": "PostForge Vercel Engine", "mongoConnected": collection is not None})
             return
