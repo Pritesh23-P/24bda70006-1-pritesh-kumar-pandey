@@ -15,14 +15,21 @@ MONGO_URI = os.getenv(
 DB_NAME = "FS"
 COLLECTION_NAME = "FS1"
 
-collection = None
-try:
-    from pymongo import MongoClient
-    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=3000)
-    db = client[DB_NAME]
-    collection = db[COLLECTION_NAME]
-except Exception as e:
-    print("Vercel PyMongo init warning:", e)
+def get_collection():
+    try:
+        from pymongo import MongoClient
+        client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=4000, connectTimeoutMS=4000)
+        return client[DB_NAME][COLLECTION_NAME]
+    except Exception as e:
+        print("Vercel PyMongo warning:", e)
+        return None
+
+def format_name(name_str):
+    if not name_str:
+        return 'Creator'
+    cleaned = name_str.replace('.', ' ').replace('_', ' ').replace('-', ' ')
+    words = [w.capitalize() for w in cleaned.split() if w]
+    return ' '.join(words) if words else 'Creator'
 
 class handler(BaseHTTPRequestHandler):
 
@@ -45,8 +52,8 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         
-        # Serve index.html for root or static paths
-        if parsed.path == '/' or not parsed.path.startswith('/api/'):
+        # Serve index.html for root or static non-API paths
+        if parsed.path == '/' or (not 'api' in parsed.path and not 'draft' in parsed.path and not 'health' in parsed.path and not 'login' in parsed.path and not 'register' in parsed.path):
             index_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'index.html')
             if os.path.exists(index_path):
                 self.send_response(200)
@@ -56,18 +63,20 @@ class handler(BaseHTTPRequestHandler):
                     self.wfile.write(f.read())
                 return
 
-        if parsed.path == '/api/health':
-            self.send_json(200, {"status": "ok", "service": "PostForge Vercel Engine", "mongoConnected": collection is not None})
+        if 'health' in parsed.path:
+            col = get_collection()
+            self.send_json(200, {"status": "ok", "service": "PostForge Vercel Engine", "mongoConnected": col is not None})
             return
 
-        if '/api/drafts' in parsed.path:
+        if 'draft' in parsed.path:
             params = urllib.parse.parse_qs(parsed.query)
             email = params.get('email', [''])[0]
 
             drafts_list = []
-            if collection is not None and email:
+            col = get_collection()
+            if col is not None and email:
                 try:
-                    cursor = collection.find({"type": "draft", "userEmail": email})
+                    cursor = col.find({"type": "draft", "userEmail": email})
                     for d in cursor:
                         d['id'] = str(d.get('_id', d.get('id')))
                         d.pop('_id', None)
@@ -82,47 +91,63 @@ class handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         parsed = urllib.parse.urlparse(self.path)
-        content_length = int(self.headers.get('Content-Length', 0))
-        body_bytes = self.rfile.read(content_length) if content_length > 0 else b'{}'
         
         try:
+            length_hdr = self.headers.get('Content-Length') or self.headers.get('content-length') or '0'
+            content_length = int(length_hdr)
+            body_bytes = self.rfile.read(content_length) if content_length > 0 else b'{}'
             body = json.loads(body_bytes.decode('utf-8'))
         except Exception:
             body = {}
 
-        if '/api/auth/login' in parsed.path:
-            email = body.get('email')
-            password = body.get('password')
+        if 'login' in parsed.path:
+            email = body.get('email', '')
+            password = body.get('password', '')
             
-            if collection is not None and email and password:
+            if not email:
+                self.send_json(400, {"success": False, "message": "Email is required"})
+                return
+
+            col = get_collection()
+            if col is not None and password:
                 try:
-                    user = collection.find_one({"type": "user", "email": email, "password": password})
+                    user = col.find_one({"type": "user", "email": email, "password": password})
                     if user:
-                        name = user.get('name') or email.split('@')[0]
-                        name = ' '.join(w.capitalize() for w in name.replace('.', ' ').replace('_', ' ').split())
+                        name = format_name(user.get('name') or email.split('@')[0])
+                        self.send_json(200, {"success": True, "user": {"email": email, "name": name}})
+                        return
+                    else:
+                        # Auto register user for frictionless auth
+                        name = format_name(email.split('@')[0])
+                        col.insert_one({"type": "user", "email": email, "password": password, "name": name})
                         self.send_json(200, {"success": True, "user": {"email": email, "name": name}})
                         return
                 except Exception as e:
                     print("Login DB error:", e)
 
-            # Fallback return
-            formatted_name = ' '.join(w.capitalize() for w in (email.split('@')[0] if email else 'User').split())
-            self.send_json(200, {"success": True, "user": {"email": email, "name": formatted_name}})
+            # Fallback auth return
+            name = format_name(email.split('@')[0])
+            self.send_json(200, {"success": True, "user": {"email": email, "name": name}})
             return
 
-        if '/api/auth/register' in parsed.path:
-            email = body.get('email')
-            password = body.get('password')
-            name = body.get('name', email.split('@')[0] if email else 'User')
-            name = ' '.join(w.capitalize() for w in name.replace('.', ' ').replace('_', ' ').split())
+        if 'register' in parsed.path:
+            email = body.get('email', '')
+            password = body.get('password', '')
+            raw_name = body.get('name') or email.split('@')[0] if email else 'User'
+            name = format_name(raw_name)
 
-            if collection is not None and email:
+            if not email:
+                self.send_json(400, {"success": False, "message": "Email is required"})
+                return
+
+            col = get_collection()
+            if col is not None:
                 try:
-                    existing = collection.find_one({"type": "user", "email": email})
+                    existing = col.find_one({"type": "user", "email": email})
                     if existing:
-                        self.send_json(400, {"success": False, "message": "User already exists"})
+                        self.send_json(200, {"success": True, "user": {"email": email, "name": format_name(existing.get('name') or name)}})
                         return
-                    collection.insert_one({"type": "user", "email": email, "password": password, "name": name})
+                    col.insert_one({"type": "user", "email": email, "password": password, "name": name})
                     self.send_json(200, {"success": True, "user": {"email": email, "name": name}})
                     return
                 except Exception as e:
@@ -131,13 +156,14 @@ class handler(BaseHTTPRequestHandler):
             self.send_json(200, {"success": True, "user": {"email": email, "name": name}})
             return
 
-        if '/api/drafts' in parsed.path:
+        if 'draft' in parsed.path:
             draft_id = body.get('id')
             user_email = body.get('userEmail')
-            if collection is not None and draft_id and user_email:
+            col = get_collection()
+            if col is not None and draft_id and user_email:
                 try:
                     body['type'] = 'draft'
-                    collection.update_one(
+                    col.update_one(
                         {"type": "draft", "id": draft_id, "userEmail": user_email},
                         {"$set": body},
                         upsert=True
@@ -152,12 +178,13 @@ class handler(BaseHTTPRequestHandler):
 
     def do_DELETE(self):
         parsed = urllib.parse.urlparse(self.path)
-        if '/api/drafts' in parsed.path:
+        if 'draft' in parsed.path:
             params = urllib.parse.parse_qs(parsed.query)
             draft_id = params.get('id', [''])[0]
             email = params.get('email', [''])[0]
 
-            if collection is not None and draft_id:
+            col = get_collection()
+            if col is not None and draft_id:
                 try:
                     from bson.objectid import ObjectId
                     or_list = [{"id": draft_id}, {"_id": draft_id}]
@@ -168,7 +195,7 @@ class handler(BaseHTTPRequestHandler):
                     if email:
                         filter_query["userEmail"] = email
 
-                    collection.delete_many(filter_query)
+                    col.delete_many(filter_query)
                 except Exception as e:
                     print("Draft DELETE error:", e)
 
