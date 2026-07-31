@@ -19,7 +19,7 @@ def get_collection():
     try:
         from pymongo import MongoClient
         client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=4000, connectTimeoutMS=4000)
-        # Ping MongoDB Atlas to verify connection
+        # Test actual MongoDB Atlas connection
         client.admin.command('ping')
         return client[DB_NAME][COLLECTION_NAME], None
     except Exception as e:
@@ -43,6 +43,12 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps(payload).encode('utf-8'))
 
+    def get_full_path(self):
+        # Extract original request URL from Vercel rewrite headers
+        matched = self.headers.get('x-matched-path') or ''
+        forwarded = self.headers.get('x-forwarded-uri') or ''
+        return f"{matched} {forwarded} {self.path}".lower()
+
     def do_OPTIONS(self):
         self.send_response(200)
         self.send_header('Access-Control-Allow-Origin', '*')
@@ -51,20 +57,10 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
+        full_path = self.get_full_path()
         parsed = urllib.parse.urlparse(self.path)
-        
-        # Serve index.html for root or static non-API paths
-        if parsed.path == '/' or (not 'api' in parsed.path and not 'draft' in parsed.path and not 'health' in parsed.path and not 'login' in parsed.path and not 'register' in parsed.path):
-            index_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'index.html')
-            if os.path.exists(index_path):
-                self.send_response(200)
-                self.send_header('Content-Type', 'text/html; charset=utf-8')
-                self.end_headers()
-                with open(index_path, 'rb') as f:
-                    self.wfile.write(f.read())
-                return
 
-        if 'health' in parsed.path:
+        if 'health' in full_path:
             col, err = get_collection()
             self.send_json(200, {
                 "status": "ok",
@@ -74,7 +70,7 @@ class handler(BaseHTTPRequestHandler):
             })
             return
 
-        if 'draft' in parsed.path:
+        if 'draft' in full_path:
             params = urllib.parse.parse_qs(parsed.query)
             email = params.get('email', [''])[0]
 
@@ -93,9 +89,20 @@ class handler(BaseHTTPRequestHandler):
             self.send_json(200, {"drafts": drafts_list})
             return
 
+        # Default fallback: serve index.html
+        index_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'index.html')
+        if os.path.exists(index_path):
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.end_headers()
+            with open(index_path, 'rb') as f:
+                self.wfile.write(f.read())
+            return
+
         self.send_json(404, {"error": "Not Found"})
 
     def do_POST(self):
+        full_path = self.get_full_path()
         parsed = urllib.parse.urlparse(self.path)
         
         try:
@@ -106,7 +113,7 @@ class handler(BaseHTTPRequestHandler):
         except Exception:
             body = {}
 
-        if 'login' in parsed.path:
+        if 'login' in full_path:
             email = body.get('email', '')
             password = body.get('password', '')
             
@@ -123,7 +130,7 @@ class handler(BaseHTTPRequestHandler):
                         self.send_json(200, {"success": True, "user": {"email": email, "name": name}, "db": "mongodb_atlas"})
                         return
                     else:
-                        # Auto register user for frictionless auth
+                        # Auto register user in MongoDB Atlas
                         name = format_name(email.split('@')[0])
                         col.insert_one({"type": "user", "email": email, "password": password, "name": name})
                         self.send_json(200, {"success": True, "user": {"email": email, "name": name}, "db": "mongodb_atlas"})
@@ -136,7 +143,7 @@ class handler(BaseHTTPRequestHandler):
             self.send_json(200, {"success": True, "user": {"email": email, "name": name}, "db": "fallback_local", "dbError": db_err})
             return
 
-        if 'register' in parsed.path:
+        if 'register' in full_path:
             email = body.get('email', '')
             password = body.get('password', '')
             raw_name = body.get('name') or email.split('@')[0] if email else 'User'
@@ -162,7 +169,7 @@ class handler(BaseHTTPRequestHandler):
             self.send_json(200, {"success": True, "user": {"email": email, "name": name}, "db": "fallback_local", "dbError": db_err})
             return
 
-        if 'draft' in parsed.path:
+        if 'draft' in full_path:
             draft_id = body.get('id')
             user_email = body.get('userEmail')
             col, db_err = get_collection()
@@ -185,8 +192,10 @@ class handler(BaseHTTPRequestHandler):
         self.send_json(404, {"error": "Not Found"})
 
     def do_DELETE(self):
+        full_path = self.get_full_path()
         parsed = urllib.parse.urlparse(self.path)
-        if 'draft' in parsed.path:
+        
+        if 'draft' in full_path:
             params = urllib.parse.parse_qs(parsed.query)
             draft_id = params.get('id', [''])[0]
             email = params.get('email', [''])[0]
