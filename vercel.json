@@ -1,12 +1,16 @@
 {
   "rewrites": [
     {
-      "source": "/api/(.*)",
+      "source": "/api/auth/:path*",
       "destination": "/api/auth.py"
     },
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "source": "/api/drafts",
+      "destination": "/api/auth.py"
+    },
+    {
+      "source": "/api/health",
+      "destination": "/api/auth.py"
     }
   ]
 }
