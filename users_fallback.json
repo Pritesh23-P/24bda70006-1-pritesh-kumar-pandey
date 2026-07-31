@@ -1,0 +1,57 @@
+{
+  "users": [
+    {
+      "id": "usr_001",
+      "email": "alex@postforge.com",
+      "name": "Alex Morgan",
+      "password": "Pritesh123",
+      "createdAt": "2026-07-30T10:00:00.000Z"
+    },
+    {
+      "id": "usr_002",
+      "email": "demo@postforge.com",
+      "name": "Demo Creator",
+      "password": "Pritesh123",
+      "createdAt": "2026-07-31T08:30:00.000Z"
+    }
+  ],
+  "drafts": [
+    {
+      "id": "draft_101",
+      "userEmail": "alex@postforge.com",
+      "title": "PostForge Product Launch Announcement",
+      "content": "\ud83d\ude80 Excited to announce PostForge! The ultimate multi-platform post composer & real-time compliance studio. Draft once, preview everywhere with instant hashtag & character ring checks. #buildinpublic #reactjs #tech #productivity",
+      "targetPlatforms": [
+        "twitter",
+        "instagram",
+        "linkedin",
+        "facebook"
+      ],
+      "mediaFiles": [
+        {
+          "name": "launch-banner.jpg",
+          "type": "image/jpeg",
+          "url": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80"
+        }
+      ],
+      "status": "draft",
+      "createdAt": "2026-07-31T12:00:00.000Z",
+      "updatedAt": "2026-07-31T12:00:00.000Z"
+    },
+    {
+      "id": "draft_102",
+      "userEmail": "alex@postforge.com",
+      "title": "Weekly Dev Insights - AI & Web Dev",
+      "content": "\ud83d\udca1 5 lessons learned while building scalable React web applications with zero-build fallbacks:\n\n1. Component isolation matters\n2. Real-time SVG rings keep users aware of limits\n3. Resilient API integration with fallback keeps users happy!\n\nWhat is your top web dev tip? #dev #design #ai #innovation",
+      "targetPlatforms": [
+        "twitter",
+        "linkedin"
+      ],
+      "mediaFiles": [],
+      "status": "published",
+      "publishedAt": "2026-07-31T14:15:00.000Z",
+      "createdAt": "2026-07-31T10:00:00.000Z",
+      "updatedAt": "2026-07-31T14:15:00.000Z"
+    }
+  ]
+}
