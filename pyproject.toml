@@ -10,3 +10,6 @@ dependencies = [
     "pymongo[srv]>=4.6.0",
     "dnspython>=2.4.0"
 ]
+
+[tool.vercel]
+entrypoint = "api.auth:handler"

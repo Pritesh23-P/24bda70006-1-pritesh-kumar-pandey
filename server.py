@@ -256,6 +256,8 @@ class PostForgeHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.end_headers()
 
+handler = PostForgeHandler
+
 def run_server(port=8000):
     os.chdir(os.path.dirname(__file__))
     server_address = ('', port)
